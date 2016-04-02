@@ -150,13 +150,42 @@ class Rating_Posts_Plugin {
         } elseif( $_SERVER['REQUEST_METHOD'] === 'GET' ) {
             $postID = (int)$_GET['postID'];
             $total_score = $this->get_totalScore($postID);
-            echo($total_score);
+            $voteDetails = $this->getUserVoteDetails($postID, $userID);
+            $voted = $voteDetails['voted'];
+            $voteType = $voteDetails['voteType'];
+            $this->send_json_respone( array("totalScore" => $total_score, "voted"=> $voted, "voteType"=> $voteType) );
             exit();
         }
     }
 
+    function getUserVoteDetails($postID, $userID) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . "simple_ratings";
+        $voted = false;
+        $voteType = "";
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "
+                        SELECT rating
+                        FROM $table_name
+                        WHERE post_id=%d AND user_id=%d
+                        ",
+            $postID,
+            $userID
+        ));
+
+        if( $rows ) {
+            $voted = true;
+            $voteType = $rows[0]->rating;
+        }
+
+        $results = array( "voted"=>$voted, "voteType"=>$voteType );
+
+        return $results;
+    }
+
     function my_error_log($msg) {
-        if(is_array($msg)){
+        if(is_array($msg)) {
             $msg = var_export($msg, true);
         }
         error_log(" " . $msg ." \n", 3, "/var/www/html/wordpress/logs/php_logs.log");

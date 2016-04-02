@@ -20,18 +20,21 @@ jQuery(document).ready(function($) {
             url: RatingAjaxArray.ajaxurl,
             data: {
                 postID: postID,
-                action : 'my_ajax_submit'
+                action : 'my_ajax_submit',
+                dataType: 'json'
             }
         });
-        request.done(function( msg ) {
-            console.log(msg) ;
-            console.log("success");
-            $('.totalScoreValue').text(msg);
+        request.done(function( response ) {
+            //var res = $.parseJSON( response );
+            console.log(response) ;
+            $('.totalScoreValue').text(response.totalScore);
             $('.totalScoreText').text(' points');
+            if( response.voted ) {
+                $(".dashicons-thumbs-" + response.voteType).addClass(" button_pressed ");
+            }
         });
         request.fail(function( jqXHR, textStatus ) {
             console.log(textStatus);
-            console.log("failure");
         });
     }
 
@@ -48,20 +51,15 @@ jQuery(document).ready(function($) {
         }
 
         if ($(this).hasClass('dashicons-thumbs-up')) {
-            alert("you pressed up");
             selectedRating = "up";
-
             if ( $('.dashicons-thumbs-down').hasClass('button_pressed') ) {
                 changedVote = true;
             }
-
         } else if ($(this).hasClass('dashicons-thumbs-down')) {
-            alert("you pressed down");
             selectedRating = "down";
             if ( $('.dashicons-thumbs-up').hasClass('button_pressed') ) {
                 changedVote = true;
             }
-
         } else {
             return;
         }
