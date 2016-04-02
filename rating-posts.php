@@ -224,6 +224,7 @@ class Rating_Posts_Plugin {
         // returns: numOfUpVotes - numOfDownVotes
         global $wpdb;
         $results = array();
+        $total_score = 0;
 
         $table_name = $wpdb->prefix . "simple_ratings";
 
@@ -237,13 +238,22 @@ class Rating_Posts_Plugin {
                         $postID
                     ));
 
-        foreach ( $rows as $row ) {
-            $rating = $row->rating;
-            $numVotes = $row->numVotes;
-            $results[$rating] = $numVotes;
-        }
+        if( count($rows) === 2 ) {
+            foreach ( $rows as $row ) {
+                $rating = $row->rating;
+                $numVotes = $row->numVotes;
+                $results[$rating] = (int)$numVotes;
+            }
+            $total_score = $results['up'] - $results['down'];
+        } elseif ( count($rows) === 1 ) {
+            $rating = $rows[0]->rating;
+            $numVotes = $rows[0]->numVotes;
+            $total_score = $numVotes;
 
-        $total_score = (int)$results['up'] - (int)$results['down'];
+            if( $rating === "down" ) {
+                $total_score = 0 - $numVotes;
+            }
+        }
 
         return $total_score;
     }
