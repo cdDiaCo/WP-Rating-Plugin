@@ -38,10 +38,6 @@ jQuery(document).ready(function($) {
         });
     }
 
-    function testFunction() {
-        
-    }
-
 
     $('.dashicons-thumbs-up, .dashicons-thumbs-down').on('click', function() {
         var selectedRating;
