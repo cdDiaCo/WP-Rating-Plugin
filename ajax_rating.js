@@ -8,13 +8,37 @@ jQuery(document).ready(function($) {
     // send the up/down vote to the server
     // change the state of the clicked button
 
-    var articleID = $('article').attr('id');
-    var postID = articleID.split("-")[1];
+    var article_list = $(" main").find("article");
+    $.each(article_list, function() {
+        var articleID, postID;
+        articleID = $(this).attr('id');
+        postID = articleID.split("-")[1];
+        var header = $(this).find("header");
+        appendPluginHtml(header);
+        getVotingScore(header, postID);
+    });
 
+    function appendPluginHtml(header) {
+        header.append($('<div></div>')
+            .addClass("ratingDiv")
+            .append($('<div></div>')
+                .addClass("ratingButtons")
+                .append($('<span></span>')
+                    .addClass("dashicons dashicons-thumbs-up"))
+                .append($('<span></span>')
+                    .addClass("dashicons dashicons-thumbs-down"))
+            )
+            .append($('<div></div>')
+                .addClass("totalScore")
+                .append($('<span></span>')
+                    .addClass("totalScoreValue"))
+                .append($('<span></span>')
+                    .addClass("totalScoreText"))
+            )
+        );
+    }
 
-   getVotingScore();
-
-    function getVotingScore() {
+    function getVotingScore(header, postID) {
         var request = $.ajax({
             method: "GET",
             url: RatingAjaxArray.ajaxurl,
@@ -25,12 +49,11 @@ jQuery(document).ready(function($) {
             }
         });
         request.done(function( response ) {
-            //var res = $.parseJSON( response );
-            console.log(response) ;
-            $('.totalScoreValue').text(response.totalScore);
-            $('.totalScoreText').text(' points');
+            //console.log(response) ;
+            header.find('.totalScoreValue').text(response.totalScore);
+            header.find('.totalScoreText').text(' points');
             if( response.voted ) {
-                $(".dashicons-thumbs-" + response.voteType).addClass(" button_pressed ");
+                header.find(".dashicons-thumbs-" + response.voteType).addClass(" button_pressed ");
             }
         });
         request.fail(function( jqXHR, textStatus ) {
@@ -38,9 +61,12 @@ jQuery(document).ready(function($) {
         });
     }
 
-
     $('.dashicons-thumbs-up, .dashicons-thumbs-down').on('click', function() {
         var selectedRating;
+        var parentHeader = $(this).closest("header");
+        var parentArticle = $(this).closest("article");
+        var articleID = parentArticle.attr('id');
+        var postID = articleID.split("-")[1];
         var cancelledVote = false; // the user voted accidentally, or he changed his mind
         var changedVote = false; // the user wants to change his vote from down to up or vice-versa
 
@@ -52,12 +78,12 @@ jQuery(document).ready(function($) {
 
         if ($(this).hasClass('dashicons-thumbs-up')) {
             selectedRating = "up";
-            if ( $('.dashicons-thumbs-down').hasClass('button_pressed') ) {
+            if ( parentHeader.find('.dashicons-thumbs-down').hasClass('button_pressed') ) {
                 changedVote = true;
             }
         } else if ($(this).hasClass('dashicons-thumbs-down')) {
             selectedRating = "down";
-            if ( $('.dashicons-thumbs-up').hasClass('button_pressed') ) {
+            if ( parentHeader.find('.dashicons-thumbs-up').hasClass('button_pressed') ) {
                 changedVote = true;
             }
         } else {
@@ -79,19 +105,19 @@ jQuery(document).ready(function($) {
                       });
 
         request.done(function( msg ) {
-            getVotingScore();
+            getVotingScore(parentHeader, postID);
             if (cancelledVote) {
                 // remove button_pressed class
-                $(".dashicons-thumbs-" + selectedRating).removeClass("button_pressed");
+                parentHeader.find(".dashicons-thumbs-" + selectedRating).removeClass("button_pressed");
             } else {
-                $(".dashicons-thumbs-" + selectedRating).addClass(" button_pressed ");
+                parentHeader.find(".dashicons-thumbs-" + selectedRating).addClass(" button_pressed ");
             }
 
             if ( changedVote ) {
                 if(selectedRating === "up") {
-                    $(".dashicons-thumbs-down").removeClass("button_pressed");
+                    parentHeader.find(".dashicons-thumbs-down").removeClass("button_pressed");
                 } else {
-                    $(".dashicons-thumbs-up").removeClass("button_pressed");
+                    parentHeader.find(".dashicons-thumbs-up").removeClass("button_pressed");
                 }
             }
         });

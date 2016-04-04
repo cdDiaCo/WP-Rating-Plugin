@@ -27,18 +27,21 @@ get_header(); ?>
                 the_title( sprintf( '<h2 class="new_entry-title"><a href="%s" rel="bookmark">', esc_url( get_permalink() ) ), '</a></h2>' );
             endif;
             ?>
+            <!--
+            <div class="ratingDiv">
+                <div class="ratingButtons">
+                    <span class="dashicons dashicons-thumbs-up"> </span>
+                    <span class="dashicons dashicons-thumbs-down"> </span>
+                </div>
+                <div class="totalScore">
+                    <span class="totalScoreValue"></span>
+                    <span class="totalScoreText"></span>
+                </div>
+            </div>
+            -->
         </header><!-- .entry-header -->
 
-        <div class="ratingDiv">
-            <div class="ratingButtons">
-                <span class="dashicons dashicons-thumbs-up"> </span>
-                <span class="dashicons dashicons-thumbs-down"> </span>
-            </div>
-            <div class="totalScore">
-                <span class="totalScoreValue"></span>
-                <span class="totalScoreText"></span>
-            </div>
-        </div>
+
 
         <div class="entry-content">
             <?php

@@ -153,7 +153,7 @@ class Rating_Posts_Plugin {
             $voteDetails = $this->getUserVoteDetails($postID, $userID);
             $voted = $voteDetails['voted'];
             $voteType = $voteDetails['voteType'];
-            $this->send_json_respone( array("totalScore" => $total_score, "voted"=> $voted, "voteType"=> $voteType) );
+            $this->send_json_respone( array("totalScore" => $total_score, "voted"=> $voted, "voteType"=> $voteType, "postID"=>$postID, "userID"=>$userID) );
             exit();
         }
     }

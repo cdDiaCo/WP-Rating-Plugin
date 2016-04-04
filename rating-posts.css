@@ -2,10 +2,7 @@
 .ratingDiv {
     position: relative;
     width: 210px;
-    height: 100px;
-    top: 20px;
-    left: 80px;
-    bottom: 60px;
+    height: 70px;
 }
 
 .ratingButtons {
@@ -15,12 +12,11 @@
 
 .ratingDiv .dashicons {
     font-size:200%;
-    margin: 10px 20px 60px 0;
+    margin-right: 25px;
 }
 
 .totalScore {
     float:left;
-    margin-top:10px;
 }
 
 .totalScoreValue {
@@ -47,6 +43,7 @@
     color: red;
 }
 
+/* is not related to the plugin */
 .new_entry-title {
     font-size: 2.2rem;
     line-height: 1.4545;
