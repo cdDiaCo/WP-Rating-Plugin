@@ -8,17 +8,30 @@ jQuery(document).ready(function($) {
     // send the up/down vote to the server
     // change the state of the clicked button
 
-    var article_list = $(" main").find("article");
+
+    var article_list = $("main").find("article");
+
+    if( !article_list.length ) {
+        article_list = $("div[role='main']").find("article");
+    }
+
     $.each(article_list, function() {
         var articleID, postID;
         articleID = $(this).attr('id');
         postID = articleID.split("-")[1];
         var header = $(this).find("header");
+        if ( !header.length ){
+            // we do not have the header element
+            // get the first div child
+            header = $(this).children().first();
+        }
         appendPluginHtml(header);
         getVotingScore(header, postID);
     });
 
     function appendPluginHtml(header) {
+        header.children().eq( 1 ).css("margin-bottom", "20px");
+
         header.append($('<div></div>')
             .addClass("ratingDiv")
             .append($('<div></div>')
@@ -49,7 +62,6 @@ jQuery(document).ready(function($) {
             }
         });
         request.done(function( response ) {
-            //console.log(response) ;
             header.find('.totalScoreValue').text(response.totalScore);
             header.find('.totalScoreText').text(' points');
             if( response.voted ) {
@@ -63,7 +75,7 @@ jQuery(document).ready(function($) {
 
     $('.dashicons-thumbs-up, .dashicons-thumbs-down').on('click', function() {
         var selectedRating;
-        var parentHeader = $(this).closest("header");
+        //var parentHeader = $(this).closest("header");
         var parentArticle = $(this).closest("article");
         var articleID = parentArticle.attr('id');
         var postID = articleID.split("-")[1];
@@ -78,12 +90,12 @@ jQuery(document).ready(function($) {
 
         if ($(this).hasClass('dashicons-thumbs-up')) {
             selectedRating = "up";
-            if ( parentHeader.find('.dashicons-thumbs-down').hasClass('button_pressed') ) {
+            if ( parentArticle.find('.dashicons-thumbs-down').hasClass('button_pressed') ) {
                 changedVote = true;
             }
         } else if ($(this).hasClass('dashicons-thumbs-down')) {
             selectedRating = "down";
-            if ( parentHeader.find('.dashicons-thumbs-up').hasClass('button_pressed') ) {
+            if ( parentArticle.find('.dashicons-thumbs-up').hasClass('button_pressed') ) {
                 changedVote = true;
             }
         } else {
@@ -105,19 +117,19 @@ jQuery(document).ready(function($) {
                       });
 
         request.done(function( msg ) {
-            getVotingScore(parentHeader, postID);
+            getVotingScore(parentArticle, postID);
             if (cancelledVote) {
                 // remove button_pressed class
-                parentHeader.find(".dashicons-thumbs-" + selectedRating).removeClass("button_pressed");
+                parentArticle.find(".dashicons-thumbs-" + selectedRating).removeClass("button_pressed");
             } else {
-                parentHeader.find(".dashicons-thumbs-" + selectedRating).addClass(" button_pressed ");
+                parentArticle.find(".dashicons-thumbs-" + selectedRating).addClass(" button_pressed ");
             }
 
             if ( changedVote ) {
                 if(selectedRating === "up") {
-                    parentHeader.find(".dashicons-thumbs-down").removeClass("button_pressed");
+                    parentArticle.find(".dashicons-thumbs-down").removeClass("button_pressed");
                 } else {
-                    parentHeader.find(".dashicons-thumbs-up").removeClass("button_pressed");
+                    parentArticle.find(".dashicons-thumbs-up").removeClass("button_pressed");
                 }
             }
         });

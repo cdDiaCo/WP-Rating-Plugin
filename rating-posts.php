@@ -24,13 +24,10 @@ class Rating_Posts_Plugin {
     }
 
     private function __construct() {
-        // add custom template and stylesheet
-        add_action('template_include', array($this, 'add_cpt_template'));
         add_action('wp_enqueue_scripts', array($this, 'add_styles_scripts'));
         add_action('wp_enqueue_scripts', array($this, 'add_jsScripts'));
         add_action('wp_ajax_my_ajax_submit', array($this, "my_ajax_submit"));
         add_action('wp_ajax_nopriv_my_ajax_submit', array($this, "my_ajax_submit"));
-
     }
 
     /**
@@ -47,7 +44,8 @@ class Rating_Posts_Plugin {
 
         $sql = "CREATE TABLE $table_name (
             id int(9) NOT NULL AUTO_INCREMENT,
-            user_id int(9) NOT NULL,
+            user_id int(9) NULL,
+            unreg_user_id varchar(150) NULL,
             post_id int(9) NOT NULL,
             rating  varchar(10) NOT NULL,
             time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -65,26 +63,6 @@ class Rating_Posts_Plugin {
         $table_name = $wpdb->prefix . "simple_ratings";
         $sql = "DROP TABLE IF EXISTS " . $table_name . ";";
         $wpdb->query($sql);
-        //dbDelta( $sql );
-    }
-
-    /**
-     * Implementation of template_include to add custom template
-     *
-     * @param $template
-     * @return string
-     */
-    function add_cpt_template($template) {
-        if(is_singular('post')) {
-            //check the active theme directory
-            if(file_exists( get_stylesheet_directory() . '/single-' . self::CDC_SLUG . '.php')) {
-                return get_stylesheet_directory() . '/single-' . self::CDC_SLUG . '.php';
-            }
-
-            //failing that use the bundled copy
-            return plugin_dir_path(__FILE__) . 'single-' . self::CDC_SLUG . '.php';
-        }
-        return $template;
     }
 
     /**
@@ -93,11 +71,11 @@ class Rating_Posts_Plugin {
      */
     function add_styles_scripts() {
         wp_enqueue_style( 'rating-posts-style', plugin_dir_url(__FILE__) . 'rating-posts.css');
+        wp_enqueue_style( 'dashicons' );
     }
 
     function add_jsScripts() {
         if (!is_admin()) {
-
             wp_deregister_script('jquery');
             wp_register_script('jquery', 'https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js', false, '1.3.2', true);
             wp_enqueue_script('jquery');
@@ -115,12 +93,24 @@ class Rating_Posts_Plugin {
         $this->my_error_log("the request_method is: " . $_SERVER['REQUEST_METHOD']);
 
         global $current_user;
-        get_currentuserinfo();
 
-        if (!is_user_logged_in())
-            return;
+        $this->my_error_log($_SERVER['HTTP_USER_AGENT']);
+        $this->my_error_log($_SERVER['REMOTE_ADDR']);
 
-        $userID = $current_user->ID;
+        $unregUserID = "";
+        $userID = "";
+
+        if (!is_user_logged_in()) {
+            // the user is not registered
+            // identify him by his IP and user agent
+
+            $userAgent = $_SERVER['HTTP_USER_AGENT'];
+            $ipAddress = $_SERVER['REMOTE_ADDR'];
+            $unregUserID = $ipAddress . " " . $userAgent;
+        } else {
+            get_currentuserinfo();
+            $userID = $current_user->ID;
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Verify the nonce.
@@ -135,43 +125,60 @@ class Rating_Posts_Plugin {
 
             if( $changedVote ) {
                 // update the existing vote with the new rating
-                $this->update_rating( array($rating, $userID, $postID) );
+                $this->update_rating( $rating, $postID, $userID, $unregUserID );
                 $this->send_json_respone($data);
             }
 
             if ( !$cancelledVote ) {
-                $this->add_new_rating(  array($userID, $postID, $rating)  );
+                $this->add_new_rating(  array($userID, $postID, $rating, $unregUserID)  );
                 $this->send_json_respone($data);
             } else {
                 // remove the vote for this postID and userID
-                $this->remove_rating( array($userID, $postID) );
+                $this->remove_rating( $postID, $userID, $unregUserID);
                 $this->send_json_respone($data);
             }
         } elseif( $_SERVER['REQUEST_METHOD'] === 'GET' ) {
             $postID = (int)$_GET['postID'];
             $total_score = $this->get_totalScore($postID);
-            $voteDetails = $this->getUserVoteDetails($postID, $userID);
+            $voteDetails = $this->getUserVoteDetails($postID, $userID, $unregUserID);
             $voted = $voteDetails['voted'];
             $voteType = $voteDetails['voteType'];
-            $this->send_json_respone( array("totalScore" => $total_score, "voted"=> $voted, "voteType"=> $voteType, "postID"=>$postID, "userID"=>$userID) );
+            $this->send_json_respone(
+                array( "totalScore" => $total_score,
+                       "voted"=> $voted,
+                       "voteType"=> $voteType,
+                       "postID"=>$postID,
+                       "userID"=>$userID,
+                       "unregUserID"=>$unregUserID
+                     )
+            );
             exit();
         }
     }
 
-    function getUserVoteDetails($postID, $userID) {
+    function getUserVoteDetails($postID, $userID, $unregUserID) {
         global $wpdb;
         $table_name = $wpdb->prefix . "simple_ratings";
         $voted = false;
         $voteType = "";
 
+        $query = "  SELECT rating
+                    FROM $table_name
+                    WHERE post_id=%d AND ";
+
+        if( $userID ) {
+            $query = $query . " user_id=%d ";
+            $user = $userID;
+        }
+        else {
+            $query = $query . " unreg_user_id=%s ";
+            $user = $unregUserID;
+        }
+
         $rows = $wpdb->get_results($wpdb->prepare(
-            "
-                        SELECT rating
-                        FROM $table_name
-                        WHERE post_id=%d AND user_id=%d
-                        ",
+            $query,
             $postID,
-            $userID
+            $user
         ));
 
         if( $rows ) {
@@ -205,48 +212,68 @@ class Rating_Posts_Plugin {
         $table_name = $wpdb->prefix . "simple_ratings";
 
         $wpdb->query($wpdb->prepare(
-            "
-                INSERT INTO $table_name
-                ( user_id, post_id, rating)
-                VALUES ( %d, %d, %s )
-                ",
+            "   INSERT INTO $table_name
+                ( user_id, post_id, rating, unreg_user_id )
+                VALUES ( %d, %d, %s, %s )
+            ",
             $args
         ));
         /*
         if ($wpdb->last_error) {
-            //die('error=' . var_dump($wpdb->last_query) . ',' . var_dump($wpdb->error));
             var_dump($wpdb->last_query);
             var_dump($wpdb->error);
         }
         */
     }
 
-    function remove_rating($args) {
+    function remove_rating( $postID, $userID, $unregUserID ) {
         global $wpdb;
         $table_name = $wpdb->prefix . "simple_ratings";
 
+        $query = "  DELETE FROM $table_name
+                    WHERE post_id=%d ";
+
+        if( $userID ) {
+            $query = $query . " AND user_id=%d ";
+            $user = $userID;
+        }
+        else {
+            $query = $query . " AND unreg_user_id=%s ";
+            $user = $unregUserID;
+        }
+
         $wpdb->query($wpdb->prepare(
-            "
-            DELETE FROM $table_name
-            WHERE user_id=%d AND post_id=%d
-            ",
-            $args
+            $query,
+            $postID,
+            $user
         ));
     }
 
-    function update_rating($args) {
+    function update_rating($rating, $postID, $userID, $unregUserID) {
         global $wpdb;
 
         $table_name = $wpdb->prefix . "simple_ratings";
+        $query = "  UPDATE $table_name
+                    SET rating=%s
+                    WHERE post_id = %d ";
+
+        if( $userID ){
+            $query = $query . " AND user_id=%d ";
+            $user = $userID;
+        }
+        else {
+            $query = $query . " AND unreg_user_id=%s ";
+            $user = $unregUserID;
+        }
 
         $wpdb->query($wpdb->prepare(
-            "
-            UPDATE $table_name
-            SET rating=%s
-            WHERE user_id=%d AND post_id=%d
-            ",
-            $args
+            $query,
+            $rating,
+            $postID,
+            $user
         ));
+
+        //$this->my_error_log($wpdb->last_query);
     }
 
     function get_totalScore($postID) {
