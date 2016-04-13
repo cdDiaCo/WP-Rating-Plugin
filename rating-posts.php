@@ -13,7 +13,7 @@ Text Domain: rating-posts
 class Rating_Posts_Plugin {
     private static $instance;
 
-    const CDC_SLUG = 'rating-posts';
+    const CDC_SLUG = 'cdc-rating-posts';
 
     public static function getInstance() {
         if (self::$instance == NULL) {
@@ -28,6 +28,8 @@ class Rating_Posts_Plugin {
         add_action('wp_enqueue_scripts', array($this, 'add_jsScripts'));
         add_action('wp_ajax_my_ajax_submit', array($this, "my_ajax_submit"));
         add_action('wp_ajax_nopriv_my_ajax_submit', array($this, "my_ajax_submit"));
+        add_action( 'admin_menu', array( $this, 'rating_posts_menu' ) );
+
     }
 
     /**
@@ -35,6 +37,7 @@ class Rating_Posts_Plugin {
      */
     public static function activate() {
         //flush_rewrite_rules();
+
 
         global $wpdb;
 
@@ -313,6 +316,79 @@ class Rating_Posts_Plugin {
 
         return $total_score;
     }
+
+    function rating_posts_menu() {
+        add_options_page( 'Rating Posts Options', 'Rating Posts', 'manage_options', self::CDC_SLUG,  array($this, 'rating_posts_options'));
+        //add_submenu_page('index.php', 'Rating Posts Option', 'Rating Posts', 'manage_options', self::CDC_SLUG, array( $this, 'rating_posts_options') );
+    }
+
+    function rating_posts_options() {
+        if( !current_user_can( 'manage_options' ) ) {
+            wp_die( __('You do not have sufficient permissions to access this page' ) );
+        }
+
+        // variables for the field and option names
+        $margin_left_option_name = self::CDC_SLUG . '_left_margin';
+        $margin_top_option_name = self::CDC_SLUG . "_top_margin";
+        $hidden_field_name = self::CDC_SLUG . '_submit_hidden';
+        $margin_left_field = self::CDC_SLUG . '_left_margin';
+        $margin_top_field = self::CDC_SLUG . '_top_margin';
+
+        // Read in existing option value from database
+        $margin_left_opt_val = get_option( $margin_left_option_name );
+        $margin_top_opt_val = get_option( $margin_top_option_name );
+
+        // See if the user has posted us some information
+        // If they did, this hidden field will be set to 'Y'
+        if( isset($_POST[ $hidden_field_name ]) && $_POST[ $hidden_field_name ] == 'Y' ) {
+            // Read their posted value
+            $margin_left_opt_val = $_POST[ $margin_left_field ];
+            $margin_top_opt_val = $_POST[ $margin_top_field ];
+
+            // Save the posted value in the database
+            update_option( $margin_left_option_name, $margin_left_opt_val );
+            update_option( $margin_top_option_name, $margin_top_opt_val );
+
+            // Put a "settings saved" message on the screen
+            ?>
+            <div class="updated"><p><strong><?php _e('settings saved.', 'cdc_rating_posts' ); ?></strong></p></div>
+            <?php
+
+        }
+
+        // Now display the settings editing screen
+
+        echo '<div class="wrap">';
+
+        // header
+
+        echo "<h2>" . __( 'Rating Posts Settings', 'cdc_rating_posts' ) . "</h2>";
+
+        // settings form
+
+        ?>
+        <form name="form1" method="post" action="">
+            <input type="hidden" name="<?php echo $hidden_field_name; ?>" value="Y">
+
+            <p><?php _e("Margin-left(px):", 'cdc_rating_posts' ); ?>
+                <input type="text" name="<?php echo $margin_left_field; ?>" value="<?php echo $margin_left_opt_val; ?>" size="20">
+            </p>
+
+            <p><?php _e("Margin-top(px):", 'cdc_rating_posts' ); ?>
+                <input type="text" name="<?php echo $margin_top_field; ?>" value="<?php echo $margin_top_opt_val; ?>" size="20">
+            </p>
+            <hr />
+
+            <p class="submit">
+                <input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" />
+            </p>
+
+        </form>
+        </div>
+
+        <?php
+    }
+
 }
 
 // initialize plugin
