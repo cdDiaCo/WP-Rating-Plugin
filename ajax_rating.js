@@ -8,6 +8,8 @@ jQuery(document).ready(function($) {
     // send the up/down vote to the server
     // change the state of the clicked button
 
+    var initialLeftMargin, initialTopMargin;
+    var leftMarginOpt, topMarginOpt;
 
     var article_list = $("main").find("article");
 
@@ -15,7 +17,7 @@ jQuery(document).ready(function($) {
         article_list = $("div[role='main']").find("article");
     }
 
-    $.each(article_list, function() {
+    $.each(article_list, function( index, value ) {
         var articleID, postID;
         articleID = $(this).attr('id');
         postID = articleID.split("-")[1];
@@ -25,11 +27,17 @@ jQuery(document).ready(function($) {
             // get the first div child
             header = $(this).children().first();
         }
-        appendPluginHtml(header);
-        getVotingScore(header, postID);
+
+        var firstElem = false;
+        if( index == 0 ) {
+            firstElem = true;
+        }
+
+        getVotingScore(header, postID, firstElem);
     });
 
-    function appendPluginHtml(header) {
+
+    function appendPluginHtml(header, firstElem) {
         header.children().eq( 1 ).css("margin-bottom", "20px");
 
         header.append($('<div></div>')
@@ -49,9 +57,25 @@ jQuery(document).ready(function($) {
                     .addClass("totalScoreText"))
             )
         );
+
+        if(firstElem) {
+            initialLeftMargin = parseInt( $('.ratingDiv').css('margin-left') ) || 0;
+            initialTopMargin = parseInt( $('.ratingDiv').css('margin-top') ) ||  0;
+        }
+
+        setMargins();
     }
 
-    function getVotingScore(header, postID) {
+    function setMargins() {
+        // add the initial css values to the new ones added by user
+        var newLeftMargin = leftMarginOpt + initialLeftMargin;
+        var newTopMargin = topMarginOpt + initialTopMargin;
+
+        $('.ratingDiv').css('margin-left', newLeftMargin + 'px' );
+        $('.ratingDiv').css('margin-top', newTopMargin + 'px' );
+    }
+
+    function getVotingScore(header, postID, firstElem ) {
         var request = $.ajax({
             method: "GET",
             url: RatingAjaxArray.ajaxurl,
@@ -62,6 +86,11 @@ jQuery(document).ready(function($) {
             }
         });
         request.done(function( response ) {
+            leftMarginOpt = parseInt( response.leftMargin );
+            topMarginOpt = parseInt( response.topMargin );
+
+            appendPluginHtml(header, firstElem);
+
             header.find('.totalScoreValue').text(response.totalScore);
             header.find('.totalScoreText').text(' points');
             if( response.voted ) {

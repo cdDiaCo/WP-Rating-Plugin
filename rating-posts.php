@@ -141,6 +141,9 @@ class Rating_Posts_Plugin {
                 $this->send_json_respone($data);
             }
         } elseif( $_SERVER['REQUEST_METHOD'] === 'GET' ) {
+            $leftMarginOpt = get_option( self::CDC_SLUG . '_left_margin' );
+            $topMarginOpt = get_option( self::CDC_SLUG . "_top_margin" );
+
             $postID = (int)$_GET['postID'];
             $total_score = $this->get_totalScore($postID);
             $voteDetails = $this->getUserVoteDetails($postID, $userID, $unregUserID);
@@ -152,7 +155,9 @@ class Rating_Posts_Plugin {
                        "voteType"=> $voteType,
                        "postID"=>$postID,
                        "userID"=>$userID,
-                       "unregUserID"=>$unregUserID
+                       "unregUserID"=>$unregUserID,
+                       "leftMargin" => $leftMarginOpt,
+                       "topMargin" => $topMarginOpt
                      )
             );
             exit();
